@@ -1,0 +1,76 @@
+"""
+Created on Wed Dec 28 12:10:25 2022
+
+@author: Hayes
+"""
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import re
+
+base_url = "https://www.airlinequality.com/airline-reviews/british-airways"
+pages = 10
+page_size = 100
+
+header = []
+sub_header = []
+reviews = []
+Info = []
+Info_final = []
+
+
+# for i in range(1, pages + 1):
+for i in range(1, pages + 1):
+
+    print(f"Scraping page {i}")
+
+    # Create URL to collect links from paginated data
+    url = f"{base_url}/page/{i}/?sortby=post_date%3ADesc&pagesize={page_size}"
+
+    # Collect HTML data from this page
+    response = requests.get(url)
+
+    # Parse content
+    content = response.content
+    parsed_content = BeautifulSoup(content, 'html.parser')
+    for head in parsed_content.find_all("h2", {"class": "text_header"}):
+        header.append(head.get_text())
+    for subhead in parsed_content.find_all("h3", {"class": "text_sub_header"}):
+        sub_header.append(subhead.get_text())    
+    for para in parsed_content.find_all("div", {"class": "text_content"}):
+        reviews.append(para.get_text())
+    for table, table1 in zip(parsed_content.find_all("div", {"class": "review-stats"}), parsed_content.find_all("table", {"class": "review-ratings"})):
+        rows = table.find_all('tr')
+        for row in rows:
+            cols = row.find_all('td')
+            cols = [ele.text.strip() for ele in cols]
+            Info.append([ele for ele in cols if ele])
+            if Info[-1][0] == 'Recommended':
+                Info_final.append(Info)
+                Info = []
+    
+    print(f"   ---> {len(reviews)} total reviews")
+
+country = []    
+df = pd.DataFrame()
+df["reviews"] = reviews
+df["Info"] = Info_final
+df["header"] = header
+df["subheader"] = sub_header
+df = df.replace('\n','', regex=True)
+for i in df['subheader']:
+    result = re.search('\((.*)\)', i)
+    country.append(result.group(1))
+df["country"] = country
+for j,n in zip(df['country'], df['subheader']):
+    n.replace(j,' ')
+    
+df[['Name','date']] = df.subheader.str.split("\)", expand = True)
+df[['Name','country']] = df.Name.str.split("\(", expand = True)
+df['Name'] = df['Name'].replace(' reviews','', regex=True)
+df['Name'] = df['Name'].str.replace('\d+', '')
+df = df.drop(['subheader'], axis = 1)
+
+df.head()
+
+df.to_csv('File save path')
