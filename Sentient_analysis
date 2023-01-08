@@ -1,0 +1,73 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Dec 26 16:40:51 2022
+
+@author: Hayes
+"""
+import numpy as np
+import pandas as pd
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+import seaborn as sns; sns.set(font_scale=1.2)
+from textblob import TextBlob
+from datetime import datetime, timedelta
+
+BA_reviews = pd.read_csv(r'C:\Users\Hayes\OneDrive\Documents\Data_sets\BA\BA_reviews.csv')  
+
+def sentiment_scores(text_data):
+
+        # Create a SentimentIntensityAnalyzer object.
+    sid_obj = SentimentIntensityAnalyzer()
+    Text_sid_obj = TextBlob(BA_reviews).sentiment.subjectivity
+    Text_pol_obj = TextBlob(BA_reviews).sentiment.polarity
+
+    neg_score_vad=[]
+    neu_score_vad=[]
+    pos_score_vad=[]
+    score_textblob = []
+    pol_textblob = []
+        
+    for tweets in BA_reviews:
+        sentiment_dict = sid_obj.polarity_scores(tweets)
+        Text_sid_obj = TextBlob(tweets).sentiment.subjectivity
+        Text_pol_obj = TextBlob(tweets).sentiment.polarity
+        
+        neg_score_vad.append(sentiment_dict['neg']*100)
+        neu_score_vad.append(sentiment_dict['neu']*100)
+        pos_score_vad.append(sentiment_dict['pos']*100)
+        score_textblob.append(Text_sid_obj)
+        pol_textblob.append(Text_pol_obj)
+        
+        
+    text_data['neg score'] = neg_score_vad
+    text_data['neu score'] = neu_score_vad
+    text_data['pos score'] = pos_score_vad
+    text_data['textblob'] = score_textblob
+    text_data['textblob_pol'] = pol_textblob
+    
+    return
+
+negarray = []
+neuarray = []
+posarray = []
+
+
+for text_data in BA_reviews['reviews']:    
+    
+        
+    sentiment_scores(text_data)
+    
+    ave_neg = np.average(text_data['neg score'])
+    negarray.append(ave_neg)
+    ave_neu = np.average(text_data['neu score'])
+    neuarray.append(ave_neu)
+    ave_pos = np.average(text_data['pos score'])
+    posarray.append(ave_pos)
+    ave_text = np.average(text_data['textblob'])
+    ave_text_pol = np.average(text_data['textblob_pol'])
+
+scores_data = { 'negative score': negarray,
+                'neutral score': neuarray,
+                'positive score': posarray}
+scores_table = pd.DataFrame(scores_data)
+print(scores_table)
